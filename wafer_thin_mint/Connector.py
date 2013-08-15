@@ -1,4 +1,4 @@
-from toksi import settings
+from django.conf import settings
 import json
 import urlparse
 from paymentutils import sever_to_server

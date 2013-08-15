@@ -1,4 +1,4 @@
-from toksi import settings
+from django.conf import settings
 
 class ModelBase(type):
 
@@ -109,11 +109,3 @@ Charfield = str
 IntegerField = int
 DecimalField = Decimal
 TextField = str
-
-class Client(Model):
-    id = IntegerField
-
-p = Client.objects.get(id=2)
-
-print p.style
-print p.client_reference
