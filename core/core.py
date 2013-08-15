@@ -1,6 +1,5 @@
 from toksi import settings
 
-
 class ModelBase(type):
 
     def __new__(meta, name, supers, attrs):
