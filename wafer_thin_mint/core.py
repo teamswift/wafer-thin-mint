@@ -1,4 +1,4 @@
-from django.conf import settings
+from toksi import settings
 
 class ModelBase(type):
 
@@ -57,8 +57,7 @@ class ModelBase(type):
 
             # set results back to objects
             for o in object:
-                if not hasattr(cls, o):
-                    setattr(cls, o, object[o])
+                setattr(cls, o, object[o])
 
         # return instance back to object
         return cls
