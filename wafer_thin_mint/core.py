@@ -104,7 +104,7 @@ class Model(object):
 from decimal import Decimal
 
 
-Charfield = str
+Charfield = basestring
 IntegerField = int
 DecimalField = Decimal
-TextField = str
+TextField = basestring
