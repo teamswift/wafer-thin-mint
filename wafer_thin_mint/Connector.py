@@ -1,4 +1,3 @@
-from toksi import settings
 import json
 import urlparse
 from paymentutils import sever_to_server
@@ -6,7 +5,7 @@ from paymentutils import sever_to_server
 # default connector - this is the server to server model used within Toksi.. change as you will, as long as you return
 # code (int), body (json), result (object)
 # e.g. code = 200, body = [{'id': 1,}], result = <Response 200>
-def Connector(table):
+def Connector(settings,table,keys):
     try:
         access_key = settings.CONMAN_ACCESS[settings.CONMAN_ACCESS_KEY]['key']
         secret_key = settings.CONMAN_ACCESS[settings.CONMAN_ACCESS_KEY]['secret']
@@ -20,17 +19,23 @@ def Connector(table):
 
     auth = sever_to_server.Server_to_server()
     auth.connect(
-        url=settings.table_urls['client']['host'],
+        url=settings.WAFER_THIN_MINT['client']['host'],
         key=access_key,
         secret=secret_key
     )
+    params = ''
+    for k in keys:
+        params += '&{}__exact={}'.format(k,keys[k])
 
-    path = urlparse.urlparse(settings.table_urls['client']['tables'][table]+settings.table_urls['client']['suffix'])
+    fullpath = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']+params
 
-    result = auth.get(path.path)
+    result = auth.get(fullpath)
 
     code = result.status_code
 
-    body = json.loads(result.content)['objects']
+    if 'objects' in json.loads(result.content):
+        body = json.loads(result.content)['objects']
+    else:
+        body = None
 
     return code, body, result
