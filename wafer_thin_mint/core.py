@@ -120,6 +120,9 @@ class ModelBase(type):
         return cls
 
     def save(cls):
+        if cls._settings is None:
+            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+
         if not cls._pk:
             raise SystemError("Cannot save before fetching or creating items")
 
@@ -178,6 +181,36 @@ class ModelBase(type):
                     break
 
             cls.get(**d)
+
+        return cls
+
+    def delete(cls):
+        if cls._settings is None:
+            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+
+        if not cls._pk:
+            raise SystemError("Cannot save before fetching or creating items")
+
+        d = {}
+        for el in cls.__dict__:
+            if not(el.startswith("_") or el == 'resource_uri'):
+                var = getattr(cls, el)
+                if not el == cls._pk:
+                    # we have to filter out case of pk as these cannot be changed
+                    if isinstance(var, Decimal):
+                        var = '{}'.format(var)
+                    d = dict(d, **{el: var})
+
+        resource = getattr(cls, 'resource_uri', None)
+        if resource is None:
+            raise EnvironmentError("Failure, cannot locate resource_uri - somethings gone wrong")
+        code, body, res = cls.call(d, method='delete', resource=resource)
+        if code == 204:
+            # we have a sucess!
+            #print d
+            for el in cls.__dict__:
+                # clear object
+                setattr(cls, el, None)
 
         return cls
 

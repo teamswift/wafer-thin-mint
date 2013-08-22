@@ -56,6 +56,11 @@ def Connector(settings,table,keys,method=None,resource=None):
         body = json.dumps(keys)
         result = auth.put(fullpath, body, content_type='json')
 
+    elif method == 'delete':
+        fullpath = resource+settings.WAFER_THIN_MINT['client']['suffix']
+        body = json.dumps(keys)
+        result = auth.delete(fullpath, body, content_type='json')
+
     else:
         raise AttributeError('Unrecognised transport method')
 
@@ -66,6 +71,8 @@ def Connector(settings,table,keys,method=None,resource=None):
         body = result.headers['location']
     elif code == 204:
         body = None
+    elif code == 410:
+        raise StandardError('Cannot fetch/delete as resource is already gone')
     elif code == 500 or code == 501:
         if method=='post':
             # item already exists or bad form
