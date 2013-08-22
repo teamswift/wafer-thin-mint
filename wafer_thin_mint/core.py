@@ -129,6 +129,8 @@ class ModelBase(type):
                 var = getattr(cls, el)
                 if not el == cls._pk:
                     # we have to filter out case of pk as these cannot be changed
+                    if isinstance(var, Decimal):
+                        var = '{}'.format(var)
                     d = dict(d, **{el: var})
 
         resource = getattr(cls, 'resource_uri', None)
