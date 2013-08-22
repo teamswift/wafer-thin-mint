@@ -18,7 +18,7 @@ class ModelBase(type):
         return type.__new__(meta, name, supers, attrs)
 
     def __init__(class_, name, supers, attrs):
-        class_.table = '{}'.format(class_.__name__).lower()
+        class_._table = '{}'.format(class_.__name__).lower()
         return type.__init__(class_, name, supers, attrs)
 
     @property
@@ -28,7 +28,7 @@ class ModelBase(type):
             # we try to import
             cls.using(settings) # reuse using method
         else:
-            cls.settings = None
+            cls._settings = None
 
         return cls
 
@@ -42,13 +42,13 @@ class ModelBase(type):
 
     def using(cls, settings):
         try:
-            cls.settings = importlib.import_module(settings)
+            cls._settings = importlib.import_module(settings)
         except:
             raise EnvironmentError('Unable to reference settings file - cannot import settings')
         return cls
 
     def get(cls, **kwargs):
-        if cls.settings is None:
+        if cls._settings is None:
             raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
             # preset our object
         object = None
@@ -78,6 +78,9 @@ class ModelBase(type):
             raise ValueError('unable to filter on specified params')
 
         # are the fields we have correct?
+        if len(body) is 0:
+            raise ValueError('unable to filter on specified params')
+
         if k not in body[0]:
             raise ValueError('Improperly setup DB API object - field not found in response')
 
@@ -117,16 +120,68 @@ class ModelBase(type):
         return cls
 
     def save(cls):
-        print '""saving""'
-        pass
+        if not cls._pk:
+            raise SystemError("Cannot save before fetching or creating items")
 
-    def create(cls):
-        print '""creating""'
-        pass
+        d = {}
+        for el in cls.__dict__:
+            if not(el.startswith("_") or el == 'resource_uri'):
+                var = getattr(cls, el)
+                if not el == cls._pk:
+                    # we have to filter out case of pk as these cannot be changed
+                    d = dict(d, **{el: var})
 
-    def call(cls,keys):
+        resource = getattr(cls, 'resource_uri', None)
+        if resource is None:
+            raise EnvironmentError("Failure, cannot locate resource_uri - somethings gone wrong")
+        code, body, res = cls.call(d, method='put', resource=resource)
+        if code == 204:
+            # we have a sucess!
+            #print d
+            cls.get(**d)
 
-        if not(cls.settings.WAFER_THIN_MINT['client']['tables'][cls.table]):
+        return cls
+
+    def create(cls, **kwargs):
+        if cls._settings is None:
+            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+
+        keyvars = {}
+        # iterate through provided fields
+        for k,v in kwargs.items():
+            # check values/fields ok
+            cls.check(k,v)
+            if isinstance(v, ModelBase):
+                # we ignore Primary Key sets - as we await this from the source
+                pass
+            else:
+                keyvars[k]=v
+
+
+        code, body, res = cls.call(keyvars, method='post')
+        if code == 201:
+            import urlparse
+            path = urlparse.urlparse(body) # if successful we would have retrieved the location
+            sp = path.path.split('/')
+            sp = filter(None,sp)
+            sp = sp[::-1]
+
+            dic = cls.__dict__
+            for a in dic:
+                is_pk = getattr(cls, a)
+                if is_pk == pk:
+                    # now we refetch our newly created object and voila all set!
+                    d = dict({'{}'.format(a):sp[0]}, **keyvars)
+                    # we can break out as only one pk per table allowed
+                    break
+
+            cls.get(**d)
+
+        return cls
+
+    def call(cls,keys, method=None, resource=None):
+
+        if not(cls._settings.WAFER_THIN_MINT['client']['tables'][cls._table]):
             raise ValueError('Table url not found - please ensure table url is set in settings file:\n'\
                              'example:'\
                              'table_urls = {'\
@@ -141,12 +196,10 @@ class ModelBase(type):
                              ' }'\
             )
 
-
-        c = importlib.import_module(cls.settings.WAFER_THIN_MINT['connector_model'])
-        code, body, result = c.Connector(cls.settings,cls.table,keys)
+        c = importlib.import_module(cls._settings.WAFER_THIN_MINT['connector_model'])
+        code, body, result = c.Connector(cls._settings,cls._table,keys,method,resource)
 
         return code, body, result
-
 
 
 
