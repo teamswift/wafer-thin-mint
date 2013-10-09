@@ -3,7 +3,7 @@ from setuptools import find_packages
 import subprocess
 
 setup(name='wafer-thin-mint',
-    version='1.0.8',
+    version='1.0.9',
     author='Simon Chapman - Team Swift',
     author_email='simon.chapman@saffrondigital.com',
     packages=find_packages())
