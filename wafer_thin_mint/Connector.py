@@ -1,38 +1,29 @@
 import json
-import urlparse
-from paymentutils import sever_to_server
+import requests
 
-# default connector - this is the server to server model used within Toksi.. change as you will, as long as you return
+# default connector using requests
 # code (int), body (json), result (object)
 # e.g. code = 200, body = [{'id': 1,}], result = <Response 200>
+TIMEOUT = 30
+
 def Connector(settings,table,keys,method=None,resource=None):
-    try:
-        access_key = settings.CONMAN_ACCESS[settings.CONMAN_ACCESS_KEY]['key']
-        secret_key = settings.CONMAN_ACCESS[settings.CONMAN_ACCESS_KEY]['secret']
-    except:
-        access_key = False
-        secret_key = False
 
-
-    if not all([secret_key, access_key]):
-        raise ValueError('Unable to locate access and secret keys for Server to Server Auth')
-
-    auth = sever_to_server.Server_to_server()
-    auth.connect(
-        url=settings.WAFER_THIN_MINT['client']['host'],
-        key=access_key,
-        secret=secret_key
-    )
     params = ''
-    fullpath = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']+params
-    schema = settings.WAFER_THIN_MINT['client']['tables'][table]+'schema/'+settings.WAFER_THIN_MINT['client']['suffix']
+    body = ''
 
-    res = auth.get(schema)
-    if res.status_code == 200:
+    try:
+        host = settings.WAFER_THIN_MINT['client']['host']
+        schema = settings.WAFER_THIN_MINT['client']['tables'][table]+'schema/'+settings.WAFER_THIN_MINT['client']['suffix']
+        res = requests.get(host+schema, data=body, params=params, timeout=TIMEOUT)
+
+        if res.status_code == 200:
         # we can confirm our search params
-        r = res.content
-        r = json.loads(r)
-
+            r = res.content
+            r = json.loads(r)
+    except ValueError:
+        raise ValueError("Missing wafer-thin-mint configuration")
+    except Exception as e:
+        raise e
 
     if method is None or method == 'get':
         for k in keys:
@@ -43,32 +34,63 @@ def Connector(settings,table,keys,method=None,resource=None):
                 else:
                     params += '&{}__exact={}'.format(k,keys[k])
 
-        fullpath = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']+params
-        result = auth.get(fullpath)
+        try:
+            full_path = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']+params
+        except ValueError:
+            raise ValueError("Missing wafer-thin-mint client/table")
+        except Exception as e:
+            raise e
+
+        try:
+            result = requests.get(host+full_path, data=body, timeout=TIMEOUT)
+        except Exception as e:
+            raise e
 
     elif method == 'post':
-        fullpath = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']
-        body = json.dumps(keys)
-        result = auth.post(fullpath, body, content_type='json')
+        try:
+            full_path = settings.WAFER_THIN_MINT['client']['tables'][table]+settings.WAFER_THIN_MINT['client']['suffix']
+            body = json.dumps(keys)
+            result = requests.post(host+full_path, data=body, timeout=TIMEOUT)
+        except ValueError:
+            raise ValueError("Missing wafer-thin-mint client/table")
+        except Exception as e:
+            raise e
 
     elif method == 'put':
-        fullpath = resource+settings.WAFER_THIN_MINT['client']['suffix']
-        body = json.dumps(keys)
-        result = auth.put(fullpath, body, content_type='json')
+        try:
+            full_path = resource+settings.WAFER_THIN_MINT['client']['suffix']
+            body = json.dumps(keys)
+            result = requests.put(host+full_path, data=body, timeout=TIMEOUT)
+        except ValueError:
+            raise ValueError("Missing wafer-thin-mint client")
+        except Exception as e:
+            raise e
 
     elif method == 'delete':
-        fullpath = resource+settings.WAFER_THIN_MINT['client']['suffix']
-        body = json.dumps(keys)
-        result = auth.delete(fullpath, body, content_type='json')
-
+        try:
+            full_path = resource+settings.WAFER_THIN_MINT['client']['suffix']
+            body = json.dumps(keys)
+            result = requests.delete(host+full_path, data=body, timeout=TIMEOUT)
+        except ValueError:
+            raise ValueError("Missing wafer-thin-mint client")
+        except Exception as e:
+            raise e
     else:
         raise AttributeError('Unrecognised transport method')
 
-    code = result.status_code
+    try:
+        code = result.status_code
+    except KeyError as e:
+        raise e
+    except Exception as e:
+        raise e
 
     if code == 201:
         # then we created an object..
-        body = result.headers['location']
+        try:
+            body = result.headers['location']
+        except Exception as e:
+            raise e
     elif code == 204:
         body = None
     elif code == 410:
@@ -76,15 +98,18 @@ def Connector(settings,table,keys,method=None,resource=None):
     elif code == 500 or code == 501:
         if method=='post':
             # item already exists or bad form
-            raise StandardError('Cannot create, possible unique reference or other SQL related prevention')
+            raise Exception('Cannot create, possible unique reference or other SQL related prevention')
         elif method == 'put':
-            raise StandardError('Cannot save record')
+            raise Exception('Cannot save record')
         else:
             # just bad form
-            raise StandardError('Unable to fetch row, may be due to improperly setup mapping URLs or bad lookup')
+            raise Exception('Unable to fetch row, may be due to improperly setup mapping URLs or bad lookup')
     else:
         if 'objects' in json.loads(result.content):
-            body = json.loads(result.content)['objects']
+            try:
+                body = json.loads(result.content)['objects']
+            except Exception as e:
+                raise e
         else:
             body = None
 
