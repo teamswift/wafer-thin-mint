@@ -1,4 +1,117 @@
-wafer-thin-mint
-===============
+README
+---------------------------------
 
-Wafer Thin Mint - TastyPie ORM
+Wafer Thin Mint, is a package that allows full integration, with ease, to the TastyPie distro.
+
+It provides a simple and elegant way, to connect straight to the DB API's with minimal effort,
+following the same pattern as the Django DB ORM.
+
+Please see below for instructions on setup, and have a happy usage :)
+
+
+SETTINGS
+---------------------------------
+
+following the example below - please add to your settings file
+
+WAFER_THIN_MINT = {
+    # the connector model can either be the default wafer-thin-mint Server to Server auth model, or a bespoke
+    'connector_model': 'wafer_thin_mint.Connector',
+    # the client information takes the host, suffix (if you dont want json), and table routing urls
+    'client': {
+        'host': 'http://127.0.0.1',
+        'suffix': '?format=json',
+        'tables': {
+            'client': '/api/v1/client/',
+            'territory': '/api/v1/territory/',
+        }
+    }
+}
+
+
+
+USAGE
+---------------------------------
+
+Model
+-----
+
+In your db api models file (example remote_db.py) add the structures as below, you'll recognise the format
+from the Django DB ORM - this is intentional to act as a simple and easy to use way to map at a similar db
+however over a remote API system.
+
+Firstly, import wafer-thin-mint
+
+#########################################
+
+from wafer_thin_mint import core
+
+#########################################
+
+Now we can build our models
+
+#########################################
+
+# first off you'll see the 'Model' parent, this maps to a class that houses the metaclass that does all the
+# work, this keeps everything nicely abstracted from view.
+
+class Client(core.Model):
+    # now this is quite crucial - wafer-thin-mint needs to know what settings we are using, there is another
+    # method that can be used, but will detail later, this however is the best method of choice
+    __settings__ = 'my_app.settings'
+
+    # now we build our structure, alike the Django DB ORM we list our desired mapping fields and 'type' them
+    # i will list the choices at the end
+    id = core.PrimaryKey
+    client_reference = core.Charfield
+    description = core.Charfield
+
+#######################################
+
+Now we have our model, and its all setup for use! So how do we use it?
+Well you probably already know how.. you just dont realise it yet.
+
+Again we've maintained the structure of the Django DB ORM and created it like so.
+
+#######################################
+
+# module.py
+from my_app import remote_db
+
+c = Client.objects.get(id=1)
+
+# we now have our 'client' retrieved via the API to the TastyPie interface!
+
+print c.id
+# 1
+
+print c.description
+# some client description
+
+# neat eh?
+
+# now i mentioned earlier about a different method of choosing our settings file.. well we can use the 'using()' param
+# for this, again, alike that of the DB ORM, just a different usecase
+
+c = Client.objects.using('my_app.settings').get(id=2)
+
+print c.id
+# 2
+
+#######################################
+
+Do ensure you set your mapping up correctly however, making sure the points you try to connect to are actually
+queryable, and also, make sure your TastyPie has the 'exact' pointer in use, as this is essential in the fetching
+method.
+
+Now finally, what 'types' are available for our fields? Well because we dont want to boil down too many specifics
+when the remote API will handle most of it, we've generalised the following, this will just prevent the small int/str
+errors etc
+
+PrimaryKey - do ensure this is used on your pk, especially if you plan on using it with foriegn table references
+CharField - says it like it is, types a str
+IntegerField - again, a bit obvious
+DecimalField - references the Decimal module
+TextField - again, alike the str
+ForiegnKey - this is used for identifying your table object, which is possible alike the DB ORM, simply reference your
+             fetched object and all will be mapped accordingly
