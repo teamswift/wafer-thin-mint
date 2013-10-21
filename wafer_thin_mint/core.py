@@ -1,4 +1,5 @@
 import importlib
+from django.conf import settings
 
 
 class ModelBase(type):
@@ -23,12 +24,12 @@ class ModelBase(type):
 
     @property
     def objects(cls):
-        settings = getattr(cls,'__settings__',None)
-        if settings is not None:
-            # we try to import
-            cls.using(settings) # reuse using method
-        else:
-            cls._settings = None
+#        settings = getattr(cls,'__settings__',None)
+#        if settings is not None:
+#            # we try to import
+#            cls.using(settings) # reuse using method
+#        else:
+#            cls._settings = None
 
         return cls
 
@@ -36,13 +37,14 @@ class ModelBase(type):
         if not(hasattr(cls, k)):
             raise ValueError('<{}> field does not exist'.format(k))
 
-            # check instance of the value of our param is equal to that of the type set.. otherwise our value has been given an incorrect value
-            if not(isinstance(v, getattr(cls, k))):
-                raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
+        # check instance of the value of our param is equal to that of the type set.. otherwise our value has been given an incorrect value
+        if not(isinstance(v, getattr(cls, k))):
+            raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
 
-    def using(cls, settings):
+    def using(cls, set):
         try:
-            cls._settings = importlib.import_module(settings)
+            global settings
+            settings = importlib.import_module(set)
         except:
             raise EnvironmentError('Unable to reference settings file - cannot import settings')
         return cls
@@ -58,7 +60,7 @@ class ModelBase(type):
             # check values/fields ok
             cls.check(k,v)
             if isinstance(v, ModelBase):
-                # foriegn key so lets take our primary
+                # foreign key so lets take our primary
                 # primary = v._pk
                 keyvars[k]=getattr(v,v._pk)
             else:
@@ -92,7 +94,7 @@ class ModelBase(type):
                     object = i
                     break
                 elif isinstance(i[k], dict):
-                    # then we have a foriegn key
+                    # then we have a foreign key
                     for ii in i[k]:
                         if isinstance(keyvars[k], ModelBase):
                             nv = getattr(keyvars[k], ii)
@@ -120,8 +122,8 @@ class ModelBase(type):
         return cls
 
     def save(cls):
-        if cls._settings is None:
-            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+        if settings is None:
+            raise EnvironmentError('Cannot locate settings in global env')
 
         if not cls._pk:
             raise SystemError("Cannot save before fetching or creating items")
@@ -141,15 +143,15 @@ class ModelBase(type):
             raise EnvironmentError("Failure, cannot locate resource_uri - somethings gone wrong")
         code, body, res = cls.call(d, method='put', resource=resource)
         if code == 204:
-            # we have a sucess!
+            # we have a success!
             #print d
             cls.get(**d)
 
         return cls
 
     def create(cls, **kwargs):
-        if cls._settings is None:
-            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+        if settings is None:
+            raise EnvironmentError('Cannot locate settings in global env')
 
         keyvars = {}
         # iterate through provided fields
@@ -175,7 +177,7 @@ class ModelBase(type):
             for a in dic:
                 is_pk = getattr(cls, a)
                 if is_pk == pk:
-                    # now we refetch our newly created object and voila all set!
+                    # now we re-fetch our newly created object and voila all set!
                     d = dict({'{}'.format(a):sp[0]}, **keyvars)
                     # we can break out as only one pk per table allowed
                     break
@@ -185,8 +187,8 @@ class ModelBase(type):
         return cls
 
     def delete(cls):
-        if cls._settings is None:
-            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+        if settings is None:
+            raise EnvironmentError('Cannot locate settings in global env')
 
         if not cls._pk:
             raise SystemError("Cannot save before fetching or creating items")
@@ -206,7 +208,7 @@ class ModelBase(type):
             raise EnvironmentError("Failure, cannot locate resource_uri - somethings gone wrong")
         code, body, res = cls.call(d, method='delete', resource=resource)
         if code == 204:
-            # we have a sucess!
+            # we have a success!
             #print d
             for el in cls.__dict__:
                 # clear object
@@ -215,8 +217,10 @@ class ModelBase(type):
         return cls
 
     def call(cls,keys, method=None, resource=None):
+        if not getattr(settings, 'WAFER_THIN_MINT', False):
+            raise EnvironmentError("Error, cannot find 'WAFER_THIN_MINT' settings, in settings file")
 
-        if not(cls._settings.WAFER_THIN_MINT['client']['tables'][cls._table]):
+        if not(settings.WAFER_THIN_MINT['client']['tables'][cls._table]):
             raise ValueError('Table url not found - please ensure table url is set in settings file:\n'\
                              'example:'\
                              'table_urls = {'\
@@ -231,8 +235,12 @@ class ModelBase(type):
                              ' }'\
             )
 
-        c = importlib.import_module(cls._settings.WAFER_THIN_MINT['connector_model'])
-        code, body, result = c.Connector(cls._settings,cls._table,keys,method,resource)
+        try:
+            c = importlib.import_module(cls._settings.WAFER_THIN_MINT['connector_model'])
+        except Exception:
+            raise EnvironmentError("Error, issue importing Connector Model")
+
+        code, body, result = c.Connector(settings,cls._table,keys,method,resource)
 
         return code, body, result
 
