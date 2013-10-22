@@ -50,8 +50,8 @@ class ModelBase(type):
         return cls
 
     def get(cls, **kwargs):
-        if cls._settings is None:
-            raise EnvironmentError('Either set __settings__ = "module.location", or .using("module.location") to reference settings location')
+        if settings is None:
+            raise EnvironmentError('Cannot locate settings in global env')
             # preset our object
         object = None
         keyvars = {}
