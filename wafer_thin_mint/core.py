@@ -236,7 +236,7 @@ class ModelBase(type):
             )
 
         try:
-            c = importlib.import_module(cls._settings.WAFER_THIN_MINT['connector_model'])
+            c = importlib.import_module(settings.WAFER_THIN_MINT['connector_model'])
         except Exception:
             raise EnvironmentError("Error, issue importing Connector Model")
 
