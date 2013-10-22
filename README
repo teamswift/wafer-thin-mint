@@ -12,10 +12,18 @@ Please see below for instructions on setup, and have a happy usage :)
 SETTINGS
 ---------------------------------
 
+first add to your installed apps
+
+INSTALLED_APPS = {
+    ...
+    'wafer_thin_mint',
+}
+
+
 following the example below - please add to your settings file
 
 WAFER_THIN_MINT = {
-    # the connector model can either be the default wafer-thin-mint Server to Server auth model, or a bespoke
+    # the connector model can either be the default wafer-thin-mint Server to Server auth model, or a bespoke (see "wafer_thin_mint.Connector" for reference)
     'connector_model': 'wafer_thin_mint.Connector',
     # the client information takes the host, suffix (if you dont want json), and table routing urls
     'client': {
@@ -56,10 +64,6 @@ Now we can build our models
 # work, this keeps everything nicely abstracted from view.
 
 class Client(core.Model):
-    # now this is quite crucial - wafer-thin-mint needs to know what settings we are using, there is another
-    # method that can be used, but will detail later, this however is the best method of choice
-    __settings__ = 'my_app.settings'
-
     # now we build our structure, alike the Django DB ORM we list our desired mapping fields and 'type' them
     # i will list the choices at the end
     id = core.PrimaryKey
