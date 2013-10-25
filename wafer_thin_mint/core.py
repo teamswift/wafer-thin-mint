@@ -144,10 +144,8 @@ class ModelBase(type):
         if resource is None:
             raise EnvironmentError("Failure, cannot locate resource_uri - somethings gone wrong")
         code, body, res = cls.call(d, method='put', resource=resource)
-        if code == 204:
-            # we have a success!
-            #print d
-            cls.get(**d)
+        if code != 204:
+            raise SystemError("Could not save")
 
         return cls
 
