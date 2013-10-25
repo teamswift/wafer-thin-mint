@@ -37,9 +37,9 @@ class ModelBase(type):
         if not(hasattr(cls, k)):
             raise ValueError('<{}> field does not exist'.format(k))
 
-        # check instance of the value of our param is equal to that of the type set.. otherwise our value has been given an incorrect value
-        if not(isinstance(v, getattr(cls, k))):
-            raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
+            # check instance of the value of our param is equal to that of the type set.. otherwise our value has been given an incorrect value
+            if not(isinstance(v, getattr(cls, k))):
+                raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
 
     def using(cls, set):
         try:
