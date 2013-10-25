@@ -57,6 +57,8 @@ class ModelBase(type):
         keyvars = {}
         # iterate through provided fields
         for k,v in kwargs.items():
+            if isinstance(v, unicode):
+                v = str(v)
             # check values/fields ok
             cls.check(k,v)
             if isinstance(v, ModelBase):
