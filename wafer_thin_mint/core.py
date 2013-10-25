@@ -77,11 +77,11 @@ class ModelBase(type):
 
 
         if body is None:
-            raise ValueError('unable to filter on specified params')
+            raise ValueError('unable to filter on specified params ({})'.format(keyvars))
 
         # are the fields we have correct?
         if len(body) is 0:
-            raise ValueError('unable to filter on specified params')
+            raise ValueError('unable to filter on specified params ({})'.format(keyvars))
 
         if k not in body[0]:
             raise ValueError('Improperly setup DB API object - field not found in response')
