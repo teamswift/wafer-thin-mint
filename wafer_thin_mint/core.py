@@ -24,13 +24,6 @@ class ModelBase(type):
 
     @property
     def objects(cls):
-#        settings = getattr(cls,'__settings__',None)
-#        if settings is not None:
-#            # we try to import
-#            cls.using(settings) # reuse using method
-#        else:
-#            cls._settings = None
-
         return cls
 
     def check(cls, k, v):
@@ -209,7 +202,6 @@ class ModelBase(type):
         code, body, res = cls.call(d, method='delete', resource=resource)
         if code == 204:
             # we have a success!
-            #print d
             for el in cls.__dict__:
                 # clear object
                 setattr(cls, el, None)
