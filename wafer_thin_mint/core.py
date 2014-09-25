@@ -20,7 +20,9 @@ class ModelBase(type):
 
     def __init__(class_, name, supers, attrs):
         class_._table = '{}'.format(class_.__name__).lower()
-        return type.__init__(class_, name, supers, attrs)
+        super(type, class_).__init__(class_, name, supers, attrs)
+        # we used to try to return an init.. well thats not gunna boast well, so lets super type instead
+        # return type.__init__(class_, name, supers, attrs)
 
     @property
     def objects(cls):
@@ -29,10 +31,10 @@ class ModelBase(type):
     def check(cls, k, v):
         if not(hasattr(cls, k)):
             raise ValueError('<{}> field does not exist'.format(k))
-
-            # check instance of the value of our param is equal to that of the type set.. otherwise our value has been given an incorrect value
-            if not(isinstance(v, getattr(cls, k))):
-                raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
+        # check instance of the value of our param is equal to that of the type set.. otherwise our value has been
+        # given an incorrect value
+        if not(isinstance(v, getattr(cls, k))):
+            raise TypeError('<{}> value "{}" is not of {}... instead of {}'.format(k, v, getattr(cls,k), type(v)))
 
     def using(cls, set):
         try:
@@ -46,8 +48,8 @@ class ModelBase(type):
         if settings is None:
             raise EnvironmentError('Cannot locate settings in global env')
             # preset our object
-        object = None
-        keyvars = {}
+        obj = None
+        keyvars = dict()
         # iterate through provided fields
         for k,v in kwargs.items():
             if isinstance(v, unicode):
@@ -57,7 +59,7 @@ class ModelBase(type):
             if isinstance(v, ModelBase):
                 # foreign key so lets take our primary
                 # primary = v._pk
-                keyvars[k]=getattr(v,v._pk)
+                keyvars[k]=getattr(v, getattr(v, '_pk'))
             else:
                 keyvars[k]=v
 
@@ -86,7 +88,7 @@ class ModelBase(type):
             #print i
             for k in keyvars:
                 if keyvars[k] == i[k]:
-                    object = i
+                    obj = i
                     break
                 elif isinstance(i[k], dict):
                     # then we have a foreign key
@@ -95,23 +97,23 @@ class ModelBase(type):
                             nv = getattr(keyvars[k], ii)
                             if isinstance(getattr(keyvars[k], ii), PrimaryKey):
                                 if nv == i[k][ii]:
-                                    object = i
+                                    obj = i
                                     break
                         elif keyvars[k] == i[k][ii]:
-                            object = i
+                            obj = i
                             break
 
         # check if we found what we were searching for...
-        if not(isinstance(object, dict)):
+        if not(isinstance(obj, dict)):
             raise TypeError('Unable to find matching row')
 
         # set results back to objects
-        for o in object:
+        for o in obj:
             ch = getattr(cls, o, None)
             if ch == pk:
                 setattr(cls, '_pk', o)
 
-            setattr(cls, o, object[o])
+            setattr(cls, o, obj[o])
 
         # return instance back to object
         return cls
@@ -123,7 +125,7 @@ class ModelBase(type):
         if not cls._pk:
             raise SystemError("Cannot save before fetching or creating items")
 
-        d = {}
+        d = dict()
         for el in cls.__dict__:
             if not(el.startswith("_") or el == 'resource_uri'):
                 var = getattr(cls, el)
@@ -146,7 +148,7 @@ class ModelBase(type):
         if settings is None:
             raise EnvironmentError('Cannot locate settings in global env')
 
-        keyvars = {}
+        keyvars = dict()
         # iterate through provided fields
         for k,v in kwargs.items():
             # check values/fields ok
@@ -186,7 +188,7 @@ class ModelBase(type):
         if not cls._pk:
             raise SystemError("Cannot save before fetching or creating items")
 
-        d = {}
+        d = dict()
         for el in cls.__dict__:
             if not(el.startswith("_") or el == 'resource_uri'):
                 var = getattr(cls, el)
@@ -212,19 +214,18 @@ class ModelBase(type):
         if not getattr(settings, 'WAFER_THIN_MINT', False):
             raise EnvironmentError("Error, cannot find 'WAFER_THIN_MINT' settings, in settings file")
 
-        if not(settings.WAFER_THIN_MINT['client']['tables'][cls._table]):
-            raise ValueError('Table url not found - please ensure table url is set in settings file:\n'\
-                             'example:'\
-                             'table_urls = {'\
-                             '"client": {'\
-                             '"host": "http://10.200.32.90",'\
-                             '"suffix": "?json",'\
-                             '"tables": {'\
-                             '"client": "/pobsi/api/v1/config/client/",'\
-\
-                             '}'\
-                             '}'\
-                             ' }'\
+        if not(settings.WAFER_THIN_MINT.get('client').get('tables').get(cls._table)):
+            raise ValueError('Table url not found - please ensure table url is set in settings file:\n'
+                             'example:'
+                             'table_urls = {'
+                             '   "client": {'
+                             '      "host": "http://0.0.0.0",'
+                             '      "suffix": "?json",'
+                             '      "tables": {'
+                             '         "client": "/api/get/my/client/",'
+                             '      }'
+                             '   }'
+                             '}'
             )
 
         try:
